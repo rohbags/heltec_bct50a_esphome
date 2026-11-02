@@ -22,6 +22,10 @@ It also integrates with Home Assistant through ESPHome, allowing the tester's me
 - **Home Assistant integration** – Expose tester measurements, settings and controller information as ESPHome entities.
 - **RGB status LED** – Visual indication of Wi-Fi, tester connection and operating state.
 
+## Screenshots
+
+<img src="images/screenshot01.png" alt="App Screenshot" width="500">
+
 ## Hardware
 
 The project is designed specifically for:
