@@ -1,0 +1,278 @@
+# Board: Generic ESP32-S3 Board (Generic)
+# Definition: definitions/boards/generic-esp32s3/manifest.yaml
+
+esphome:
+  name: bct50a
+  friendly_name: Heltec BCT50A
+  min_version: 2025.6.0
+
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_VFS_SUPPORT_DIR: y
+    components:
+      - joltwallet/littlefs==1.23.1
+  flash_size: 16MB
+  partitions:
+    - name: bct_fs
+      type: data
+      subtype: littlefs
+      size: 8192000
+
+      
+psram:
+  mode: octal
+  speed: 80MHz
+
+    
+# logger:
+# IMPORTANT: when USB host is active the console must be on UART0
+logger:
+  hardware_uart: UART0
+  baud_rate: 0
+#  baud_rate: 115200 # enable hardware uart
+  level: INFO
+    
+api:
+  encryption:
+    key: < YOUR KEY HERE >
+
+ota:
+  - platform: esphome
+
+
+wifi:
+  ap:
+    ssid: "BCT50A Setup"
+    password: "bct50a-setup"
+  on_connect:
+    then:
+      - lambda: id(bct).start_dashboard();
+  on_disconnect:
+    then:
+      - lambda: id(bct).stop_dashboard();
+ 
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+    id: home_time
+
+  - platform: sntp
+    id: sntp_time
+    # timezone: "Australia/Melbourne"
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+      - 2.pool.ntp.org
+
+
+external_components:
+  - source:
+      type: local
+      path: my_components
+    components: [bct50a ,usb_uart]
+
+  
+usb_uart:
+  - type: ch340
+    heltec_reg: true
+    channels:
+      - id: bct_uart
+        baud_rate: 115200
+        data_bits: 8
+        parity: NONE
+        stop_bits: 1
+        # buffer_size: 2048
+        debug: false
+        dummy_receiver: false
+
+# Onboard WS2812 (adjust pin for your board — common: GPIO48, GPIO21, GPIO38)
+light:
+  - platform: esp32_rmt_led_strip
+    id: status_led
+    name: "Status LED"
+    pin: GPIO48
+    num_leds: 1
+    chipset: WS2812
+    rgb_order: GRB
+    internal: true
+    restore_mode: RESTORE_DEFAULT_ON
+
+
+# The component hosts its own custom dashboard on HTTP port 80.
+# Do not also enable ESPHome's standard web_server on the same port.
+bct50a:
+  id: bct
+  uart_id: bct_uart
+  home_time_id: home_time
+  sntp_time_id: sntp_time
+  status_light_id: status_led
+  cpu_temp_id: cpu_temp
+  voltage:
+    name: "BCT50A Voltage"
+    accuracy_decimals: 3
+    unit_of_measurement: V
+    icon: mdi:flash
+  current:
+    name: "BCT50A Current"
+    accuracy_decimals: 2
+    unit_of_measurement: A
+    icon: mdi:current-dc
+  capacity_ah:
+    name: "BCT50A Capacity"
+    accuracy_decimals: 2
+    unit_of_measurement: Ah
+    icon: mdi:battery-arrow-down
+  energy_wh:
+    name: "BCT50A Energy"
+    accuracy_decimals: 2
+    unit_of_measurement: Wh
+    icon: mdi:lightning-bolt
+  set_current:
+    name: "BCT50A Set Current"
+    accuracy_decimals: 2
+    unit_of_measurement: A
+  set_voltage:
+    name: "BCT50A Set Voltage"
+    accuracy_decimals: 2
+    unit_of_measurement: V
+  end_value:
+    name: "BCT50A End Value"
+    accuracy_decimals: 2
+  runtime:
+    name: "BCT50A Runtime"
+    accuracy_decimals: 0
+    unit_of_measurement: s
+    icon: mdi:timer-outline
+  device_state:
+    name: "BCT50A State"
+  firmware_version:
+    name: "BCT50A Firmware Version"
+  product:
+    name: "BCT50A Product"
+  # last_frame:
+  #   name: "BCT50A Last Frame"
+
+  
+# These are requested settings; changing them does not send a command by itself.
+# They are applied when a start command is pressed.
+number:
+  - platform: template
+    name: "BCT50A Requested Current"
+    id: requested_current
+    unit_of_measurement: A
+    min_value: 0.01
+    max_value: 50
+    step: 0.01
+    initial_value: 5.0
+    optimistic: true
+    mode: box
+    set_action:
+      - lambda: id(bct).set_current(x);
+
+  - platform: template
+    name: "BCT50A Requested Voltage Limit"
+    id: requested_voltage
+    unit_of_measurement: V
+    min_value: 0.1
+    max_value: 5.0
+    step: 0.01
+    initial_value: 3.65
+    optimistic: true
+    mode: box
+    set_action:
+      - lambda: id(bct).set_voltage(x);
+
+  - platform: template
+    name: "BCT50A Charge Termination Current"
+    id: requested_termination_current
+    unit_of_measurement: A
+    min_value: 0.01
+    max_value: 50
+    step: 0.01
+    initial_value: 0.1
+    optimistic: true
+    mode: box
+    set_action:
+      - lambda: id(bct).set_termination_current(x);
+
+        
+button:
+  - platform: template
+    name: "BCT50A Start CC Discharge"
+    icon: mdi:battery-arrow-down
+    on_press:
+      - lambda: id(bct).start_cc_discharge();
+
+  - platform: template
+    name: "BCT50A Start CV Discharge"
+    icon: mdi:battery-arrow-down-outline
+    on_press:
+      - lambda: id(bct).start_cv_discharge();
+
+  - platform: template
+    name: "BCT50A Start CC Charge"
+    icon: mdi:battery-arrow-up
+    on_press:
+      - lambda: id(bct).start_cc_charge();
+
+  - platform: template
+    name: "BCT50A Pause Test"
+    icon: mdi:pause-circle
+    on_press:
+      - lambda: id(bct).pause_test();
+
+  - platform: template
+    name: "BCT50A Clear Counters"
+    icon: mdi:counter
+    on_press:
+      - lambda: id(bct).clear_counters();
+
+  - platform: template
+    name: "BCT50A Toggle PC Mode"
+    icon: mdi:usb-port
+    on_press:
+      # - lambda: id(bct).disconnect_device();
+      - lambda: id(bct).toggle_pc_mode();
+
+        
+debug:
+  update_interval: 60s
+
+  
+sensor:
+  # Wi-Fi Signal Strength (RSSI)
+  - platform: wifi_signal
+    name: "Wi-Fi Signal"
+    update_interval: 60s
+  - platform: debug
+    free:
+      name: "Heap Free RAM"
+    block:
+      name: "Max Free Heap Block"
+    # # For ESP8266 only (tracks memory fragmentation)
+    # fragmentation:
+    #   name: "Heap Fragmentation"
+    # For ESP32 with PSRAM only
+    psram:
+      name: "Free PSRAM"
+  - platform: internal_temperature
+    name: "ESP32 Internal Temperature"
+    id: cpu_temp
+    update_interval: 15s
+
+text_sensor:
+  - platform: debug
+    device:
+      name: "Device Info"
+    reset_reason:
+      name: "Last Reset Reason"
+
+
+      
