@@ -24,7 +24,7 @@ It also integrates with Home Assistant through ESPHome, allowing the tester's me
 
 ## Screenshots
 
-<img src="images/screenshot01.png" alt="App Screenshot" width="800">
+<img src="images/screenshot01.png" alt="App Screenshot" width="100%">
 
 ## Hardware
 
